@@ -48,6 +48,9 @@ url.workspace = true
 webauthn-rs.workspace = true
 zeroize.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+openssl = { workspace = true, features = ["vendored"] }
+
 [dev-dependencies]
 reqwest.workspace = true
 tower.workspace = true
