@@ -1,0 +1,4 @@
+[[IgnoredVulns]]
+id = "RUSTSEC-2023-0071"
+ignoreUntil = 2026-10-29
+reason = "openidconnect uses rsa only for public-key signature verification; Constellation performs no RSA private-key operations. Remove when upstream ships a patched path."

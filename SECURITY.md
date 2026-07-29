@@ -14,3 +14,13 @@ only to verify provider signatures with public keys; it never performs an RSA
 private-key operation. Device and cluster private keys are Ed25519. Maintainers
 must remove this exception when upstream publishes a patched path and must
 re-review it before any public release.
+
+The desktop lockfile also contains Tauri's Linux GTK3 dependency chain. OSV
+reports the GTK3 bindings as unmaintained and reports
+`RUSTSEC-2024-0429` in `glib` 0.18. Constellation does not call the affected
+`VariantStrIter` functions, but this remains a Linux release blocker until
+Tauri's supported dependency chain moves to a patched `glib`. Build-only
+`proc-macro-error` and `unic-*` maintenance advisories are tracked with the
+same upstream migration. The corresponding OSV exceptions are documented
+with expiry dates in `apps/desktop/src-tauri/osv-scanner.toml`; they must not
+be renewed without review.

@@ -1,0 +1,88 @@
+# Tauri's supported Linux WebView stack still resolves these GTK3 crates.
+# They are release blockers, not silent permanent suppressions. Re-review
+# every exception before its expiry or any signed Linux release.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0413"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained atk GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0416"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained atk-sys GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0412"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gdk GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0418"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gdk-sys GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0411"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gdkwayland-sys GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0417"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gdkx11 GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0414"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gdkx11-sys GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+ignoreUntil = 2026-10-29
+reason = "glib 0.18 is transitive through Tauri's GTK3 stack. Constellation does not call VariantStrIter; upgrade before a signed Linux release."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0415"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gtk GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0420"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gtk-sys GTK3 binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0419"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained gtk3-macros binding is transitive through Tauri's Linux stack; migrate when Tauri does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained build-time proc-macro-error is transitive through Tauri; remove when the supported Tauri stack does."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained unic-char-property is transitive through Tauri's HTML stack; migrate with upstream."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained unic-char-range is transitive through Tauri's HTML stack; migrate with upstream."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained unic-common is transitive through Tauri's HTML stack; migrate with upstream."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained unic-ucd-ident is transitive through Tauri's HTML stack; migrate with upstream."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+ignoreUntil = 2026-10-29
+reason = "Unmaintained unic-ucd-version is transitive through Tauri's HTML stack; migrate with upstream."
