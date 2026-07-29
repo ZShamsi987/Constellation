@@ -35,6 +35,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.97.1
+          components: rustfmt,clippy
       - run: cargo build --locked --release -p constellationd -p constellation-cli -p constellation-service
       - name: Generate binary SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
@@ -87,6 +88,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.97.1
+          components: rustfmt,clippy
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @constellation/desktop bundle
       - name: Generate desktop SBOM
