@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-slice_dir="$(mktemp -d /tmp/constellation-slice.XXXXXX)"
 slice_port="${CONSTELLATION_TEST_PORT:-4318}"
-slice_base="http://127.0.0.1:${slice_port}"
-slice_log="${slice_dir}/daemon.log"
+slice_startup_timeout="${CONSTELLATION_SLICE_STARTUP_TIMEOUT_SECONDS:-600}"
 enrollment_pid=""
 worker_pid=""
+
+if ! [[ "${slice_startup_timeout}" =~ ^[1-9][0-9]*$ ]]; then
+  echo 'CONSTELLATION_SLICE_STARTUP_TIMEOUT_SECONDS must be a positive integer.' >&2
+  exit 2
+fi
+
+slice_dir="$(mktemp -d /tmp/constellation-slice.XXXXXX)"
+slice_base="http://127.0.0.1:${slice_port}"
+slice_log="${slice_dir}/daemon.log"
 
 cargo run -p constellationd -- \
   --bind "127.0.0.1:${slice_port}" \
@@ -30,17 +37,26 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-for _attempt in $(seq 1 80); do
+slice_deadline=$((SECONDS + slice_startup_timeout))
+slice_ready=false
+while (( SECONDS < slice_deadline )); do
   if curl --fail --silent "${slice_base}/ready" >/dev/null; then
+    slice_ready=true
     break
+  fi
+  if ! kill -0 "${slice_pid}" 2>/dev/null; then
+    echo 'Constellation daemon exited before the vertical slice became ready.' >&2
+    sed -n '1,200p' "${slice_log}"
+    exit 1
   fi
   sleep 0.25
 done
 
-curl --fail --silent "${slice_base}/ready" >/dev/null || {
+if test "${slice_ready}" != true; then
+  echo "Constellation daemon was not ready within ${slice_startup_timeout} seconds." >&2
   sed -n '1,200p' "${slice_log}"
   exit 1
-}
+fi
 
 cargo run -p constellation-node-simulator -- \
   --controller "${slice_base}" \
