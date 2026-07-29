@@ -1,0 +1,56 @@
+[package]
+name = "constellationd"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-stream.workspace = true
+axum.workspace = true
+axum-server.workspace = true
+axum-server-mtls.workspace = true
+base64.workspace = true
+chrono.workspace = true
+clap.workspace = true
+constellation-core = { version = "0.1.0-alpha.1", path = "../../crates/constellation-core" }
+constellation-identity = { version = "0.1.0-alpha.1", path = "../../crates/constellation-identity" }
+constellation-model-store = { version = "0.1.0-alpha.1", path = "../../crates/constellation-model-store" }
+constellation-network = { version = "0.1.0-alpha.1", path = "../../crates/constellation-network" }
+constellation-plugins = { version = "0.1.0-alpha.1", path = "../../crates/constellation-plugins" }
+constellation-runtime = { version = "0.1.0-alpha.1", path = "../../crates/constellation-runtime" }
+constellation-scheduler = { version = "0.1.0-alpha.1", path = "../../crates/constellation-scheduler" }
+constellation-secrets = { version = "0.1.0-alpha.1", path = "../../crates/constellation-secrets" }
+constellation-teams = { version = "0.1.0-alpha.1", path = "../../crates/constellation-teams" }
+constellation-workflows = { version = "0.1.0-alpha.1", path = "../../crates/constellation-workflows" }
+futures-util.workspace = true
+http.workspace = true
+openidconnect.workspace = true
+percent-encoding.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+semver.workspace = true
+sha2.workspace = true
+rustls.workspace = true
+rustls-pki-types.workspace = true
+sqlx.workspace = true
+subtle.workspace = true
+sysinfo.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+url.workspace = true
+webauthn-rs.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+reqwest.workspace = true
+tower.workspace = true
+
+[lints]
+workspace = true

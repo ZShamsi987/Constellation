@@ -1,0 +1,10 @@
+[product]
+name = "Constellation"
+slug = "constellation"
+tagline = "Turn every computer you control into one private AI supercomputer."
+reverse_dns = "dev.constellation"
+binary = "constellationd"
+cli = "constellation"
+package_scope = "@constellation"
+default_api_port = 4317
+repository = "https://github.com/ZShamsi987/Constellation"

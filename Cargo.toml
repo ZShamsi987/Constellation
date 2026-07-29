@@ -1,0 +1,91 @@
+[workspace]
+members = [
+  "apps/constellation-cli",
+  "apps/constellation-service",
+  "apps/constellationd",
+  "crates/constellation-core",
+  "crates/constellation-identity",
+  "crates/constellation-model-store",
+  "crates/constellation-network",
+  "crates/constellation-plugins",
+  "crates/constellation-protocol",
+  "crates/constellation-runtime",
+  "crates/constellation-scheduler",
+  "crates/constellation-secrets",
+  "crates/constellation-teams",
+  "crates/constellation-workflows",
+  "tools/node-simulator",
+]
+exclude = ["apps/desktop/src-tauri"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0-alpha.1"
+edition = "2024"
+rust-version = "1.97.1"
+license = "Apache-2.0"
+repository = "https://github.com/ZShamsi987/Constellation"
+
+[workspace.dependencies]
+anyhow = "1.0.100"
+async-stream = "0.3.6"
+async-trait = "0.1.89"
+axum = { version = "0.8.8", features = ["http2", "json", "macros", "ws"] }
+axum-server = { version = "0.8.0", features = ["tls-rustls-no-provider"] }
+axum-server-mtls = "0.1.2"
+base64 = "0.22.1"
+chacha20poly1305 = { version = "0.10.1", features = ["std"] }
+chrono = { version = "0.4.42", features = ["serde"] }
+clap = { version = "4.5.54", features = ["derive", "env"] }
+data-encoding = "2.9.0"
+ed25519-dalek = { version = "2.2.0", features = ["rand_core", "serde"] }
+futures-util = "0.3.31"
+hmac = "0.12.1"
+http = "1.4.0"
+openidconnect = "4.0.1"
+percent-encoding = "2.3.2"
+prost = "0.14.4"
+prost-types = "0.14.4"
+rand = "0.9.2"
+rand_core = { version = "0.6.4", features = ["getrandom"] }
+rcgen = { version = "0.14.8", features = ["x509-parser", "zeroize"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls", "stream"] }
+rustls = { version = "0.23.42", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = "1.14.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+serde_yaml_ng = "0.10.0"
+semver = { version = "1.0.27", features = ["serde"] }
+sha2 = "0.10.9"
+spake2 = "0.4.0"
+subtle = "2.6.1"
+sqlx = { version = "0.8.6", default-features = false, features = ["any", "chrono", "macros", "migrate", "postgres", "runtime-tokio-rustls", "sqlite", "uuid"] }
+thiserror = "2.0.17"
+time = "0.3.44"
+tokio = { version = "1.49.0", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-stream = { version = "0.1.18", features = ["sync"] }
+tonic = { version = "0.14.6", features = ["transport", "tls-ring"] }
+tonic-prost = "0.14.6"
+tower = { version = "0.5.2", features = ["util"] }
+tower-http = { version = "0.6.8", features = ["cors", "request-id", "trace"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "fmt", "json"] }
+utoipa = { version = "5.4.0", features = ["chrono", "uuid"] }
+uuid = { version = "1.19.0", features = ["serde", "v4", "v7"] }
+url = { version = "2.5.7", features = ["serde"] }
+sysinfo = "0.37.2"
+windows-service = "0.8.1"
+zeroize = "1.8.2"
+wasmtime = { version = "47.0.2", default-features = false, features = ["component-model", "cranelift", "runtime", "std"] }
+wasmtime-wasi = { version = "47.0.2", default-features = false, features = ["p2"] }
+webauthn-rs = { version = "0.5.5", features = ["danger-credential-internals"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"

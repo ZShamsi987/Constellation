@@ -1,0 +1,20 @@
+[package]
+name = "constellation-desktop"
+version = "0.1.0-alpha.1"
+description = "Constellation private AI compute desktop shell"
+edition = "2024"
+rust-version = "1.97.1"
+license = "Apache-2.0"
+repository = "https://github.com/ZShamsi987/Constellation"
+
+[lib]
+name = "constellation_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.11.5", features = [] }
+
+[workspace]

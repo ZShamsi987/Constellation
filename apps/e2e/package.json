@@ -1,0 +1,21 @@
+{
+  "name": "@constellation/e2e",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "true",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --check .",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/node": "^24.10.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3"
+  }
+}

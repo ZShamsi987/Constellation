@@ -1,0 +1,17 @@
+{
+  "name": "constellation",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
+  "scripts": {
+    "build": "pnpm --recursive build",
+    "check": "pnpm --recursive check",
+    "dev": "pnpm --filter @constellation/web dev",
+    "format": "pnpm --recursive format",
+    "test": "pnpm --recursive test"
+  }
+}

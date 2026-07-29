@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "constellation/v1/common.proto";
+import "constellation/v1/event.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+// Normalized accelerator.
+message Accelerator {
+  string vendor = 1;
+  string model = 2;
+  uint64 memory_bytes = 3;
+  repeated string backends = 4;
+}
+
+// Scheduler-safe normalized hardware summary.
+message HardwareSnapshot {
+  string node_id = 1;
+  string hostname = 2;
+  string operating_system = 3;
+  string operating_system_version = 4;
+  string architecture = 5;
+  string cpu_model = 6;
+  uint32 logical_cores = 7;
+  uint64 memory_total_bytes = 8;
+  uint64 memory_available_bytes = 9;
+  repeated Accelerator accelerators = 10;
+  uint64 disk_available_bytes = 11;
+  bool on_battery = 12;
+  bool user_active = 13;
+  optional float temperature_celsius = 14;
+  optional bool thermal_throttling = 15;
+  google.protobuf.Timestamp observed_at = 16;
+}
+
+// Capability quality distinguishes absent from inaccessible values.
+enum MeasurementKind {
+  MEASUREMENT_KIND_UNSPECIFIED = 0;
+  MEASUREMENT_KIND_MEASURED = 1;
+  MEASUREMENT_KIND_ESTIMATED = 2;
+  MEASUREMENT_KIND_UNAVAILABLE = 3;
+}
+
+// Compute and controller-link benchmark.
+message NodeControlServicePublishBenchmarkRequest {
+  string node_id = 1;
+  string runtime = 2;
+  string model = 3;
+  double tokens_per_second = 4;
+  double time_to_first_token_ms = 5;
+  double network_latency_ms = 6;
+  double network_bandwidth_mbps = 7;
+  double jitter_ms = 8;
+  double packet_loss = 9;
+  uint32 sample_count = 10;
+  MeasurementKind kind = 11;
+  google.protobuf.Timestamp measured_at = 12;
+}
+
+// Heartbeat contains metadata only.
+message NodeControlServicePublishHeartbeatRequest {
+  string node_id = 1;
+  uint64 sequence = 2;
+  NodeStatus status = 3;
+  google.protobuf.Timestamp sent_at = 4;
+  google.protobuf.Duration uptime = 5;
+}
+
+// Periodic inventory publication from an authenticated node.
+message NodeControlServicePublishInventoryRequest {
+  ProtocolVersion protocol = 1;
+  HardwareSnapshot hardware = 2;
+  repeated string runtime_ids = 3;
+  uint64 sequence = 4;
+}
+
+// Controller acknowledgement and next inventory deadline.
+message NodeControlServicePublishInventoryResponse {
+  ProtocolVersion protocol = 1;
+  uint64 accepted_sequence = 2;
+  google.protobuf.Duration refresh_after = 3;
+}
+
+// Node control-plane service. Implementations use outbound worker connections.
+service NodeControlService {
+  rpc PublishInventory(NodeControlServicePublishInventoryRequest) returns (NodeControlServicePublishInventoryResponse);
+  rpc PublishHeartbeat(NodeControlServicePublishHeartbeatRequest) returns (NodeControlServicePublishHeartbeatResponse);
+  rpc PublishBenchmark(NodeControlServicePublishBenchmarkRequest) returns (NodeControlServicePublishBenchmarkResponse);
+  rpc EstablishSession(stream NodeControlServiceEstablishSessionRequest) returns (stream NodeControlServiceEstablishSessionResponse);
+}
+
+// Heartbeat acknowledgement with the controller event sequence observed.
+message NodeControlServicePublishHeartbeatResponse {
+  uint64 event_sequence = 1;
+  google.protobuf.Duration next_heartbeat = 2;
+}
+
+// Benchmark acknowledgement.
+message NodeControlServicePublishBenchmarkResponse {
+  bool accepted = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// Narrow authorization for a peer operation.
+message PeerTransferTicket {
+  string ticket_id = 1;
+  string source_node_id = 2;
+  string target_node_id = 3;
+  string operation = 4;
+  string content_hash = 5;
+  uint64 byte_budget = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  bytes controller_signature = 8;
+}
+
+message NodeControlServiceEstablishSessionRequest {
+  oneof message {
+    SessionHello hello = 1;
+    HardwareSnapshot hardware = 2;
+    NodeControlServicePublishBenchmarkRequest benchmark = 3;
+    NodeControlServicePublishHeartbeatRequest heartbeat = 4;
+    LeaseUpdate lease_update = 5;
+  }
+}
+
+message NodeControlServiceEstablishSessionResponse {
+  oneof message {
+    ClusterEvent event = 1;
+    SessionWorkloadLease lease = 2;
+    CancelWorkload cancel = 3;
+    PeerTransferTicket peer_ticket = 4;
+  }
+}
+
+message SessionWorkloadLease {
+  string lease_id = 1;
+  string workload_id = 2;
+  string attempt_id = 3;
+  bytes plan_fragment = 4;
+  google.protobuf.Timestamp deadline = 5;
+  uint64 memory_budget_bytes = 6;
+}
+
+message LeaseUpdate {
+  string lease_id = 1;
+  string status = 2;
+  string error_code = 3;
+}
+
+message CancelWorkload {
+  string workload_id = 1;
+  string reason = 2;
+}

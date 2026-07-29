@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "google/protobuf/timestamp.proto";
+import "constellation/v1/common.proto";
+
+enum WorkloadClass {
+  WORKLOAD_CLASS_UNSPECIFIED = 0;
+  WORKLOAD_CLASS_INTERACTIVE = 1;
+  WORKLOAD_CLASS_BATCH = 2;
+  WORKLOAD_CLASS_BACKGROUND = 3;
+}
+
+enum SchedulingPolicy {
+  SCHEDULING_POLICY_UNSPECIFIED = 0;
+  SCHEDULING_POLICY_FASTEST = 1;
+  SCHEDULING_POLICY_MOST_PRIVATE = 2;
+  SCHEDULING_POLICY_LOWEST_POWER = 3;
+  SCHEDULING_POLICY_BALANCED = 4;
+  SCHEDULING_POLICY_KEEP_THIS_COMPUTER_RESPONSIVE = 5;
+}
+
+enum ExecutionStrategy {
+  EXECUTION_STRATEGY_UNSPECIFIED = 0;
+  EXECUTION_STRATEGY_SINGLE_NODE = 1;
+  EXECUTION_STRATEGY_INDEPENDENT_ROUTING = 2;
+  EXECUTION_STRATEGY_REPLICATED = 3;
+  EXECUTION_STRATEGY_PIPELINE = 4;
+  EXECUTION_STRATEGY_TENSOR = 5;
+  EXECUTION_STRATEGY_PREFILL_DECODE = 6;
+  EXECUTION_STRATEGY_SPECULATIVE = 7;
+  EXECUTION_STRATEGY_HYBRID = 8;
+}
+
+message WorkloadRequirements {
+  string workload_id = 1;
+  string model = 2;
+  string required_runtime = 3;
+  uint64 estimated_memory_bytes = 4;
+  WorkloadClass class = 5;
+  SchedulingPolicy policy = 6;
+  repeated string allowed_node_ids = 7;
+  bool allow_remote = 8;
+  google.protobuf.Timestamp deadline = 9;
+}
+
+message PrivacyPath {
+  repeated string prompt_node_ids = 1;
+  repeated string model_weight_node_ids = 2;
+  bool uses_relay = 3;
+  bool leaves_local_network = 4;
+  bool uses_cloud = 5;
+  bool content_logged = 6;
+}
+
+message ExecutionPlan {
+  string plan_id = 1;
+  string workload_id = 2;
+  ExecutionStrategy strategy = 3;
+  repeated string selected_node_ids = 4;
+  double estimated_ttft_ms = 5;
+  double estimated_tokens_per_second = 6;
+  map<string, uint64> estimated_memory_bytes = 7;
+  uint64 estimated_network_bytes = 8;
+  double confidence = 9;
+  repeated string reasons = 10;
+  repeated RejectedCandidate alternatives = 11;
+  PrivacyPath privacy = 12;
+  repeated string replan_triggers = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message RejectedCandidate {
+  string node_id = 1;
+  string code = 2;
+  string reason = 3;
+}
+
+// Durable controller lease assigned to exactly one authenticated worker.
+message WorkloadLease {
+  ProtocolVersion protocol = 1;
+  string lease_id = 2;
+  string workload_id = 3;
+  string node_id = 4;
+  uint32 attempt = 5;
+  string model = 6;
+  bytes encrypted_input = 7;
+  uint32 maximum_output_tokens = 8;
+  ExecutionPlan plan = 9;
+  google.protobuf.Timestamp expires_at = 10;
+}
+
+// Long-poll request for the next durable lease.
+message PollLeaseRequest {
+  ProtocolVersion protocol = 1;
+  string node_id = 2;
+}
+
+// Empty when no eligible work is queued.
+message PollLeaseResponse {
+  ProtocolVersion protocol = 1;
+  optional WorkloadLease lease = 2;
+}
+
+// Ordered worker runtime event for replay and duplicate suppression.
+message WorkloadControlServicePublishEventRequest {
+  string node_id = 1;
+  string lease_id = 2;
+  uint64 sequence = 3;
+  bytes canonical_event_json = 4;
+}
+
+// Event acknowledgement.
+message WorkloadControlServicePublishEventResponse {
+  uint64 accepted_sequence = 1;
+  bool terminal = 2;
+}
+
+// Worker lease and event transport.
+service WorkloadControlService {
+  rpc PollLease(PollLeaseRequest) returns (PollLeaseResponse);
+  rpc PublishEvent(WorkloadControlServicePublishEventRequest) returns (WorkloadControlServicePublishEventResponse);
+}

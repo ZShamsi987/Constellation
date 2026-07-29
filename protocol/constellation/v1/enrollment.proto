@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "constellation/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+// Begins a single-use invitation proof without transmitting the short code.
+message EnrollmentServiceBeginRequest {
+  ProtocolVersion protocol = 1;
+  string invitation_id = 2;
+  bytes device_public_key = 3;
+  bytes device_message = 4;
+}
+
+// SPAKE2 controller contribution and opaque session handle.
+message EnrollmentServiceBeginResponse {
+  ProtocolVersion protocol = 1;
+  string session_id = 2;
+  bytes controller_message = 3;
+  bytes controller_proof = 4;
+  google.protobuf.Timestamp expires_at = 5;
+}
+
+// Completes possession proof and submits redacted inventory for approval.
+message EnrollmentServiceConfirmRequest {
+  string session_id = 1;
+  bytes device_proof = 2;
+  string display_name = 3;
+  string operating_system = 4;
+  string architecture = 5;
+}
+
+// Pending requests never contain credentials.
+message EnrollmentServiceConfirmResponse {
+  string invitation_id = 1;
+  string status = 2;
+}
+
+// Polls an approved credential using the original authenticated session.
+message EnrollmentServiceCredentialRequest {
+  string session_id = 1;
+}
+
+// Signed membership and 24-hour device certificate bundle.
+message EnrollmentServiceCredentialResponse {
+  string status = 1;
+  bytes membership_json = 2;
+  bytes device_certificate_pem = 3;
+  bytes certificate_authority_pem = 4;
+}
+
+// Enrollment service exposed only at the controller enrollment endpoint.
+service EnrollmentService {
+  rpc Begin(EnrollmentServiceBeginRequest) returns (EnrollmentServiceBeginResponse);
+  rpc Confirm(EnrollmentServiceConfirmRequest) returns (EnrollmentServiceConfirmResponse);
+  rpc Credential(EnrollmentServiceCredentialRequest) returns (EnrollmentServiceCredentialResponse);
+}

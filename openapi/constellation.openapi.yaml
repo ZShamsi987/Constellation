@@ -1,0 +1,1916 @@
+openapi: 3.1.0
+info:
+  title: Constellation API
+  version: 0.1.0-alpha.1
+  description: Local-first cluster API and documented OpenAI-compatible subset.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: http://127.0.0.1:4317
+    description: Local daemon
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Check process health
+      security: []
+      operationId: health
+      responses:
+        "200":
+          description: Process health
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /ready:
+    get:
+      summary: Check service readiness
+      security: []
+      operationId: ready
+      responses:
+        "200":
+          description: Runtime and database readiness
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/models:
+    get:
+      summary: List available models
+      operationId: listModels
+      responses:
+        "200":
+          description: Models available through active adapters
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [object, data]
+                properties:
+                  object: { const: list }
+                  data:
+                    {
+                      type: array,
+                      items: { $ref: "#/components/schemas/Model" },
+                    }
+  /v1/chat/completions:
+    post:
+      summary: Create a chat completion
+      operationId: createChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChatRequest" }
+      responses:
+        "200":
+          description: JSON completion or text/event-stream when stream is true
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+  /v1/responses:
+    post:
+      summary: Create a response
+      operationId: createResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResponsesRequest" }
+      responses:
+        "200": { description: JSON response or typed SSE events }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/completions:
+    post:
+      summary: Create a legacy completion
+      operationId: createCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, prompt]
+              properties:
+                model: { type: string }
+                prompt: {}
+                stream: { type: boolean, default: false }
+                max_tokens: { type: integer, minimum: 1, maximum: 4096 }
+      responses:
+        "200": { description: JSON completion or SSE chunks }
+  /v1/embeddings:
+    post:
+      summary: Create embeddings
+      operationId: createEmbedding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, input]
+              properties:
+                model: { type: string }
+                input: {}
+      responses:
+        "200": { description: Deterministic embedding list }
+  /constellation/v1/cluster:
+    get:
+      summary: Get the cluster summary
+      operationId: getClusterSummary
+      responses:
+        "200":
+          description: Plain-language cluster capacity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClusterSummary" }
+  /constellation/v1/devices:
+    get:
+      summary: List cluster devices
+      operationId: listDevices
+      responses:
+        "200":
+          description: Normalized devices
+          content:
+            application/json:
+              schema:
+                { type: array, items: { $ref: "#/components/schemas/Node" } }
+    post:
+      summary: Register a simulated or enrolled device
+      operationId: registerDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceRegistration" }
+      responses:
+        "201":
+          description: Registered simulator or authenticated enrollment result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Node" }
+  /constellation/v1/benchmarks:
+    get:
+      summary: List current benchmark results
+      operationId: listBenchmarks
+      responses:
+        "200": { description: Latest node benchmarks }
+    post:
+      summary: Submit a benchmark result
+      operationId: submitBenchmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Benchmark" }
+      responses:
+        "201": { description: Stored benchmark }
+  /constellation/v1/reports/benchmark:
+    get:
+      summary: Export a content-free reproducible benchmark report
+      operationId: exportBenchmarkReport
+      responses:
+        "200":
+          description: Hardware, policy, method, age, sample and confidence inputs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BenchmarkReportExport" }
+  /constellation/v1/devices/{node_id}/heartbeat:
+    post:
+      summary: Record a five-second authenticated node heartbeat
+      operationId: heartbeatDevice
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Current controller liveness status }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/devices/{node_id}/inventory:
+    post:
+      summary: Replace this authenticated worker's current hardware and runtime inventory
+      operationId: updateDeviceInventory
+      parameters:
+        - $ref: "#/components/parameters/NodeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeviceRegistration" }
+      responses:
+        "200": { description: Normalized current inventory }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/devices/{node_id}/revoke:
+    post:
+      summary: Revoke a non-local node and all membership credentials
+      operationId: revokeDevice
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Device revoked }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/devices/{node_id}/credentials/rotate:
+    post:
+      summary: Rotate this node's membership and CA-validated mTLS certificate for 24 hours
+      operationId: rotateDeviceCredentials
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Rotated membership and certificate bundle
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/EnrollmentCredentialResponse" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/devices/{node_id}/policy:
+    get:
+      summary: Read locally enforced node resource limits
+      operationId: getDevicePolicy
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Effective owner policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodeResourcePolicy" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Update node resource limits without remotely loosening owner controls
+      operationId: updateDevicePolicy
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NodeResourcePolicy" }
+      responses:
+        "200":
+          description: Updated policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NodeResourcePolicy" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models:
+    get:
+      summary: List verified local model manifests
+      operationId: listLocalModels
+      responses:
+        "200":
+          description: Imported model manifests without source credentials
+          content:
+            application/json:
+              schema:
+                {
+                  type: array,
+                  items: { $ref: "#/components/schemas/ModelManifest" },
+                }
+  /constellation/v1/network/policy:
+    get:
+      summary: Read explicit local and remote transport controls
+      operationId: getNetworkPolicy
+      responses:
+        "200":
+          description: Effective network policy and current-month usage
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkPolicyResponse" }
+    patch:
+      summary: Update remote and relay opt-ins and monthly byte quota
+      operationId: updateNetworkPolicy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NetworkPolicy" }
+      responses:
+        "200":
+          description: Effective persisted policy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkPolicyResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/network/simulate:
+    post:
+      summary: Select an authenticated encrypted path and disclose its privacy impact
+      operationId: simulateTransport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidates]
+              properties:
+                candidates:
+                  type: array
+                  minItems: 1
+                  maxItems: 16
+                  items: { $ref: "#/components/schemas/TransportCandidate" }
+                record_observed_bytes: { type: [integer, "null"], minimum: 0 }
+      responses:
+        "200":
+          description: Selected transport and pre-execution privacy disclosure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransportDecision" }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/emergency/remote-disable:
+    post:
+      summary: Immediately disable remote paths until controller restart and explicit re-enable
+      operationId: disableRemoteNetworking
+      responses:
+        "200":
+          description: Local-only durable policy with emergency stop engaged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NetworkPolicyResponse" }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/import:
+    post:
+      summary: Import and verify a controller-local model file
+      operationId: importLocalModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModelImportRequest" }
+      responses:
+        "201":
+          description: Model verified and promoted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModelManifest" }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/verify:
+    post:
+      summary: Recompute all digests for a cached model
+      operationId: verifyLocalModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModelAliasRequest" }
+      responses:
+        "200":
+          description: Refreshed verified manifest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModelManifest" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/pin:
+    patch:
+      summary: Change model eviction protection
+      operationId: pinLocalModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModelPinRequest" }
+      responses:
+        "200":
+          description: Updated manifest
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ModelManifest" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/remove:
+    post:
+      summary: Remove a model and its unreferenced chunks
+      operationId: removeLocalModel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModelAliasRequest" }
+      responses:
+        "204": { description: Model removed }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/transfer-tickets:
+    post:
+      summary: Authorize one verified chunk transfer to one enrolled destination
+      operationId: createModelTransferTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alias, chunk_sha256, destination_node]
+              properties:
+                alias: { type: string }
+                chunk_sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+                destination_node: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Ten-minute authority-signed transfer ticket
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PeerTransferTicket" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/models/chunks/{chunk_sha256}:
+    get:
+      summary: Download a chunk after membership and transfer-ticket verification
+      operationId: downloadModelChunk
+      parameters:
+        - name: chunk_sha256
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[a-f0-9]{64}$" }
+        - name: x-constellation-transfer-ticket
+          in: header
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Digest-verified model chunk, at most 4 MiB
+          content:
+            application/octet-stream:
+              schema: { type: string, contentEncoding: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/backup:
+    get:
+      summary: Download a transactionally consistent encrypted-state SQLite backup
+      operationId: downloadBackup
+      responses:
+        "200":
+          description: File-backed SQLite database; OS credential keys are not included
+          content:
+            application/vnd.sqlite3:
+              schema: { type: string, contentEncoding: binary }
+        "401": { $ref: "#/components/responses/Error" }
+  /constellation/v1/chat/conversations:
+    get:
+      summary: List encrypted conversation metadata
+      operationId: listConversations
+      responses:
+        "200":
+          description: Content-free conversation metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Conversation" }
+    post:
+      summary: Create an encrypted persistent conversation
+      operationId: createConversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: [string, "null"], maxLength: 200 }
+                temporary: { type: boolean, const: false, default: false }
+      responses:
+        "201":
+          description: Conversation created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Conversation" }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/chat/conversations/{conversation_id}:
+    delete:
+      summary: Delete encrypted conversation content
+      operationId: deleteConversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Conversation deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/chat/conversations/{conversation_id}/messages:
+    get:
+      summary: Decrypt and list conversation messages at the authenticated API boundary
+      operationId: listConversationMessages
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Decrypted messages for the authenticated local user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ConversationMessage" }
+    post:
+      summary: Encrypt and append a conversation message
+      operationId: appendConversationMessage
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, content]
+              properties:
+                role: { enum: [system, user, assistant, tool] }
+                content: { type: string, minLength: 1, maxLength: 1048576 }
+      responses:
+        "201":
+          description: Encrypted message appended
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConversationMessage" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/invitations:
+    get:
+      summary: List redacted enrollment invitation states
+      operationId: listInvitations
+      responses:
+        "200":
+          description: Invitation states without code or link secrets
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InvitationStatus" }
+    post:
+      summary: Create a ten-minute single-use enrollment invitation
+      operationId: createInvitation
+      responses:
+        "201":
+          description: One-time invitation presentation; secrets are not recoverable later
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPresentation" }
+  /constellation/v1/enrollment/begin:
+    post:
+      summary: Begin an unauthenticated SPAKE2 exchange using invitation material
+      operationId: beginEnrollment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentBeginRequest" }
+      responses:
+        "200":
+          { description: Controller SPAKE2 message and key-confirmation proof }
+        "401": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+  /constellation/v1/enrollment/confirm:
+    post:
+      summary: Prove the SPAKE2 transcript and submit device inventory for approval
+      operationId: confirmEnrollment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EnrollmentConfirmRequest" }
+      responses:
+        "202":
+          description: Device is waiting for mandatory administrator approval
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationStatus" }
+        "401": { $ref: "#/components/responses/Error" }
+  /constellation/v1/invitations/{invitation_id}/approve:
+    post:
+      summary: Approve a proved device and issue a 24-hour membership credential
+      operationId: approveInvitation
+      parameters:
+        - name: invitation_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Signed membership credential }
+        "409": { $ref: "#/components/responses/Error" }
+  /constellation/v1/enrollment/credential:
+    post:
+      summary: Retrieve approval state using a derived enrollment proof
+      operationId: getEnrollmentCredential
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invitation_id, status_proof]
+              properties:
+                invitation_id: { type: string, format: uuid }
+                status_proof: { type: string, minLength: 43, maxLength: 43 }
+      responses:
+        "200": { description: Pending state or signed membership credential }
+        "401": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plans/simulate:
+    post:
+      summary: Simulate workload placement
+      operationId: simulatePlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanSimulation" }
+      responses:
+        "200":
+          description: Execution plan without executing content
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionPlan" }
+        "503": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plans/distributed/simulate:
+    post:
+      summary: Simulate a capability-gated advanced distributed plan
+      operationId: simulateDistributedPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DistributedPlanSimulation" }
+      responses:
+        "200":
+          description: Validated advanced execution plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionPlan" }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plans/workload/{workload_id}:
+    get:
+      summary: Get the persisted plan for a workload
+      operationId: getWorkloadPlan
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200":
+          description: Execution plan
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionPlan" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plans/workload/{workload_id}/digital-twin:
+    post:
+      summary: Run bounded deterministic what-if scenarios
+      operationId: runDigitalTwin
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DigitalTwinRequest" }
+      responses:
+        "200": { description: Scenario outcomes }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plans/workload/{workload_id}/observations:
+    post:
+      summary: Record privacy-safe actual plan performance
+      operationId: recordPlanObservation
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlanObservationRequest" }
+      responses:
+        "200": { description: Calibration record }
+  /constellation/v1/traces/workload/{workload_id}:
+    get:
+      summary: List content-free distributed trace spans
+      operationId: listTraceSpans
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200": { description: Ordered trace spans }
+    post:
+      summary: Record one content-free distributed trace span
+      operationId: recordTraceSpan
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TraceSpan" }
+      responses:
+        "201": { description: Stored trace span }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workloads/{workload_id}/cancel:
+    post:
+      summary: Cancel a running local or remote workload
+      operationId: cancelWorkload
+      parameters:
+        - $ref: "#/components/parameters/WorkloadId"
+      responses:
+        "200": { description: Workload cancelled }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workers/{node_id}/leases/poll:
+    post:
+      summary: Poll one encrypted durable lease as its authenticated node
+      operationId: pollWorkerLease
+      parameters:
+        - $ref: "#/components/parameters/NodeId"
+      responses:
+        "200":
+          {
+            description: Decrypted lease or null at the authenticated worker boundary,
+          }
+        "403": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workers/{node_id}/leases/{lease_id}/events:
+    post:
+      summary: Submit one strictly ordered worker runtime event
+      operationId: submitWorkerEvent
+      parameters:
+        - $ref: "#/components/parameters/NodeId"
+        - name: lease_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WorkerEventSubmission" }
+      responses:
+        "200": { description: Event accepted }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflows/schema:
+    get:
+      summary: Get the workflow authoring JSON Schema
+      operationId: getWorkflowSchema
+      responses:
+        "200": { description: JSON Schema 2020-12 document }
+  /constellation/v1/workflows:
+    get:
+      summary: List encrypted workflow metadata
+      operationId: listWorkflows
+      responses:
+        "200": { description: Workflow metadata }
+    post:
+      summary: Validate and create an encrypted workflow
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [definition]
+              properties:
+                definition: { $ref: "#/components/schemas/WorkflowDefinition" }
+      responses:
+        "201": { description: Workflow created }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflows/{workflow_id}:
+    get:
+      summary: Decrypt and inspect a workflow definition
+      operationId: getWorkflow
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+      responses:
+        "200": { description: Workflow definition and revision }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflows/{workflow_id}/runs:
+    post:
+      summary: Start a durable workflow run
+      operationId: startWorkflow
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inputs:
+                  type: object
+                  additionalProperties: { type: string, maxLength: 4096 }
+      responses:
+        "201": { description: Encrypted run created and dispatching }
+  /constellation/v1/workflow-runs/{run_id}:
+    get:
+      summary: Inspect a workflow run and ready branches
+      operationId: getWorkflowRun
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      responses:
+        "200": { description: Decrypted run state }
+  /constellation/v1/workflow-runs/{run_id}/events:
+    post:
+      summary: Apply an authorized workflow transition or human approval
+      operationId: transitionWorkflowRun
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event: { type: object }
+      responses:
+        "200": { description: Updated run }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflow-runs/{run_id}/artifacts:
+    post:
+      summary: Store a bounded encrypted workflow artifact
+      operationId: createWorkflowArtifact
+      parameters:
+        - $ref: "#/components/parameters/RunId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [step_id, name, media_type, content_base64]
+              properties:
+                step_id: { type: string, maxLength: 64 }
+                name: { type: string, maxLength: 128 }
+                media_type: { type: string, maxLength: 128 }
+                content_base64: { type: string, maxLength: 25165824 }
+      responses:
+        "201": { description: Encrypted artifact metadata }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflow-artifacts/{artifact_id}:
+    get:
+      summary: Verify, decrypt, and download one workflow artifact
+      operationId: downloadWorkflowArtifact
+      parameters:
+        - name: artifact_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Original artifact bytes }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflows/{workflow_id}/schedules:
+    post:
+      summary: Create a bounded UTC workflow schedule
+      operationId: createWorkflowSchedule
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cron_utc]
+              properties:
+                cron_utc: { type: string, maxLength: 164 }
+                enabled: { type: boolean, default: true }
+                concurrency_limit: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "201": { description: Schedule stored }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflows/{workflow_id}/webhooks:
+    post:
+      summary: Create a webhook and show its secret once
+      operationId: createWorkflowWebhook
+      parameters:
+        - $ref: "#/components/parameters/WorkflowId"
+      responses:
+        "201": { description: Webhook and one-time secret }
+  /constellation/v1/workflow-webhooks/{webhook_id}/trigger:
+    post:
+      security: []
+      summary: Trigger a workflow with its separately scoped webhook secret
+      operationId: triggerWorkflowWebhook
+      parameters:
+        - name: webhook_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: x-constellation-webhook-secret
+          in: header
+          required: true
+          schema: { type: string, maxLength: 256 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                inputs:
+                  type: object
+                  additionalProperties: { type: string, maxLength: 4096 }
+      responses:
+        "202": { description: Encrypted run accepted }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflow-templates:
+    get:
+      summary: List reusable workflow template metadata
+      operationId: listWorkflowTemplates
+      responses:
+        "200": { description: Template catalog }
+    post:
+      summary: Add an encrypted workflow to the reusable template catalog
+      operationId: createWorkflowTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, workflow_id]
+              properties:
+                name: { type: string, maxLength: 128 }
+                workflow_id: { type: string, format: uuid }
+                metadata: { type: object, maxProperties: 64 }
+      responses:
+        "201": { description: Template catalog entry }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/workflow-templates/{template_id}/instantiate:
+    post:
+      summary: Clone a template as a separately encrypted workflow
+      operationId: instantiateWorkflowTemplate
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 128 }
+      responses:
+        "201": { description: New workflow definition }
+        "404": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plugins:
+    get:
+      summary: List installed plugin manifests and grant state
+      operationId: listPlugins
+      responses:
+        "200": { description: Installed plugins }
+  /constellation/v1/plugins/install:
+    post:
+      summary: Compile and install a disabled WASI component plugin
+      operationId: installPlugin
+      responses:
+        "201": { description: Plugin installed; exact grant required }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/plugins/{plugin_id}/grant:
+    post:
+      summary: Approve a declared permission subset for an exact digest
+      operationId: grantPlugin
+      parameters:
+        - $ref: "#/components/parameters/PluginId"
+      responses:
+        "200": { description: Exact grant active }
+  /constellation/v1/plugins/{plugin_id}/execute:
+    post:
+      summary: Execute an enabled tool plugin inside Wasmtime
+      operationId: executePlugin
+      parameters:
+        - $ref: "#/components/parameters/PluginId"
+      responses:
+        "200": { description: Bounded plugin output }
+  /constellation/v1/principals:
+    get:
+      summary: List principals without API key hashes
+      operationId: listPrincipals
+      responses:
+        "200": { description: Principals }
+    post:
+      summary: Create a principal and show a service key once
+      operationId: createPrincipal
+      responses:
+        "201": { description: Principal created }
+  /constellation/v1/teams:
+    get:
+      summary: List teams
+      operationId: listTeams
+      responses:
+        "200": { description: Teams }
+    post:
+      summary: Create a team
+      operationId: createTeam
+      responses:
+        "201": { description: Team created }
+  /constellation/v1/teams/{team_id}/members:
+    get:
+      summary: List team memberships
+      operationId: listTeamMembers
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200": { description: Team memberships }
+    post:
+      summary: Create or update a team membership
+      operationId: putTeamMember
+      parameters:
+        - $ref: "#/components/parameters/TeamId"
+      responses:
+        "200": { description: Membership updated }
+  /constellation/v1/auth-providers:
+    get:
+      summary: List configured authentication providers
+      operationId: listAuthProviders
+      responses:
+        "200": { description: Provider configurations without credential values }
+    post:
+      summary: Configure a discovered OIDC provider or a disabled SAML proposal
+      operationId: putAuthProvider
+      responses:
+        "200": { description: Provider configured }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth-providers/{provider_id}/links:
+    post:
+      summary: Bind a provider subject to a pre-provisioned local principal
+      operationId: linkExternalIdentity
+      parameters:
+        - name: provider_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_id, subject]
+              properties:
+                principal_id: { type: string, format: uuid }
+                subject: { type: string, minLength: 1, maxLength: 2048 }
+      responses:
+        "200": { description: Subject digest linked; raw subject is not persisted }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/passkeys/registration/begin:
+    post:
+      summary: Begin a server-held passkey registration ceremony
+      operationId: beginPasskeyRegistration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_id, name]
+              properties:
+                principal_id: { type: string, format: uuid }
+                name: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { $ref: "#/components/responses/PasskeyCeremony" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/passkeys/registration/finish:
+    post:
+      summary: Verify and persist a single-use passkey registration
+      operationId: finishPasskeyRegistration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ceremony_id, credential]
+              properties:
+                ceremony_id: { type: string, format: uuid }
+                credential: { type: object }
+      responses:
+        "201": { description: Passkey registered }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/passkeys/login/begin:
+    post:
+      security: []
+      summary: Begin a passkey authentication ceremony
+      operationId: beginPasskeyLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_name]
+              properties:
+                principal_name: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200": { $ref: "#/components/responses/PasskeyCeremony" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/passkeys/login/finish:
+    post:
+      security: []
+      summary: Verify a passkey assertion and issue a 24-hour browser session
+      operationId: finishPasskeyLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ceremony_id, credential]
+              properties:
+                ceremony_id: { type: string, format: uuid }
+                credential: { type: object }
+      responses:
+        "200": { description: One-time bearer session and principal }
+        "401": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/oidc/providers:
+    get:
+      security: []
+      summary: List enabled OIDC providers available for browser sign-in
+      operationId: listOidcLoginProviders
+      responses:
+        "200": { description: Public provider identifiers and issuers }
+  /constellation/v1/auth/oidc/login/begin:
+    post:
+      security: []
+      summary: Discover the provider and begin authorization code with PKCE
+      operationId: beginOidcLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider_id]
+              properties:
+                provider_id: { type: string, format: uuid }
+      responses:
+        "200": { description: Authorization URL and five-minute expiry }
+        "400": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /constellation/v1/auth/oidc/login/finish:
+    post:
+      security: []
+      summary: Verify code, PKCE, nonce, ID token, token hash, groups, and local identity link
+      operationId: finishOidcLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider_id, state, code]
+              properties:
+                provider_id: { type: string, format: uuid }
+                state: { type: string, minLength: 1, maxLength: 512 }
+                code: { type: string, minLength: 1, maxLength: 8192 }
+      responses:
+        "200": { description: One-time 24-hour bearer session and principal }
+        "401": { $ref: "#/components/responses/Error" }
+  /constellation/v1/cloud-adapters:
+    get:
+      summary: List cloud adapter policies without credential values
+      operationId: listCloudAdapters
+      responses:
+        "200": { description: Cloud policies }
+    post:
+      summary: Configure an explicitly bounded OpenAI-compatible cloud adapter policy
+      operationId: putCloudAdapter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - provider_plugin
+                - enabled
+                - regions
+                - models
+                - monthly_cost_limit_micros
+                - monthly_network_limit_bytes
+                - credential_reference
+                - endpoint
+                - input_cost_per_million_tokens_micros
+                - output_cost_per_million_tokens_micros
+              properties:
+                id: { type: string, format: uuid }
+                provider_plugin:
+                  type: string
+                  const: com.constellation.cloud.openai-compatible
+                enabled: { type: boolean }
+                regions:
+                  type: array
+                  items: { type: string }
+                models:
+                  type: array
+                  items: { type: string }
+                monthly_cost_limit_micros: { type: integer, minimum: 0 }
+                monthly_network_limit_bytes: { type: integer, minimum: 0 }
+                credential_reference: { type: string }
+                endpoint: { type: string, format: uri }
+                input_cost_per_million_tokens_micros:
+                  { type: integer, minimum: 0 }
+                output_cost_per_million_tokens_micros:
+                  { type: integer, minimum: 0 }
+      responses:
+        "200": { description: Cloud policy configured }
+        "400": { $ref: "#/components/responses/Error" }
+  /constellation/v1/control-plane/lease:
+    get:
+      summary: Inspect the fenced controller lease
+      operationId: getControllerLease
+      responses:
+        "200": { description: Current lease or null }
+    post:
+      summary: Acquire or renew a monotonic controller fencing lease
+      operationId: acquireControllerLease
+      responses:
+        "200": { description: New fenced lease }
+  /constellation/v1/events:
+    get:
+      summary: Replay ordered cluster events
+      operationId: listEvents
+      parameters:
+        - { name: after, in: query, schema: { type: integer, minimum: 0 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 1000, default: 100 },
+          }
+      responses:
+        "200": { description: Ordered redacted events }
+components:
+  parameters:
+    WorkloadId:
+      name: workload_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NodeId:
+      name: node_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    WorkflowId:
+      name: workflow_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    PluginId:
+      name: plugin_id
+      in: path
+      required: true
+      schema: { type: string }
+    TeamId:
+      name: team_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    Error:
+      description: Normalized error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    PasskeyCeremony:
+      description: Server-held single-use WebAuthn ceremony
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [ceremony_id, public_key, expires_in_seconds]
+            properties:
+              ceremony_id: { type: string, format: uuid }
+              public_key: { type: object }
+              expires_in_seconds: { type: integer, minimum: 1, maximum: 300 }
+  schemas:
+    Health:
+      type: object
+      required: [status, version]
+      properties:
+        status: { type: string }
+        version: { type: string }
+    Model:
+      type: object
+      required: [id, object, owned_by, created]
+      properties:
+        id: { type: string }
+        object: { const: model }
+        owned_by: { type: string }
+        created: { type: integer }
+    ChatRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model: { type: string }
+        messages:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string }
+              content: {}
+        stream: { type: boolean, default: false }
+        max_tokens: { type: integer, minimum: 1, maximum: 4096 }
+        max_completion_tokens: { type: integer, minimum: 1, maximum: 4096 }
+        tools: {}
+        response_format: {}
+    ResponsesRequest:
+      type: object
+      required: [model, input]
+      properties:
+        model: { type: string }
+        input: {}
+        stream: { type: boolean, default: false }
+        max_output_tokens: { type: integer, minimum: 1, maximum: 4096 }
+        tools: {}
+        text: {}
+    ClusterSummary:
+      type: object
+      required:
+        [
+          ready_nodes,
+          total_nodes,
+          usable_memory_bytes,
+          active_runtime,
+          local_only,
+          message,
+        ]
+      properties:
+        ready_nodes: { type: integer }
+        total_nodes: { type: integer }
+        usable_memory_bytes: { type: integer }
+        active_runtime: { type: string }
+        local_only: { type: boolean }
+        message: { type: string }
+    ModelChunk:
+      type: object
+      required: [index, sha256, size_bytes]
+      properties:
+        index: { type: integer, minimum: 0 }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        size_bytes: { type: integer, minimum: 1, maximum: 4194304 }
+    LicenseAcceptance:
+      type: object
+      required: [license_id, accepted_at, source]
+      properties:
+        license_id: { type: string, minLength: 1 }
+        accepted_at: { type: string, format: date-time }
+        source: { type: string }
+    ModelManifest:
+      type: object
+      required:
+        [
+          schema_version,
+          alias,
+          sha256,
+          size_bytes,
+          chunk_size_bytes,
+          chunks,
+          format,
+          source,
+          license,
+          pinned,
+          created_at,
+          verified_at,
+        ]
+      properties:
+        schema_version: { type: integer, const: 1 }
+        alias: { type: string, minLength: 1, maxLength: 200 }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        size_bytes: { type: integer, minimum: 1 }
+        chunk_size_bytes: { type: integer, const: 4194304 }
+        chunks:
+          {
+            type: array,
+            minItems: 1,
+            items: { $ref: "#/components/schemas/ModelChunk" },
+          }
+        format: { type: string }
+        quantization: { type: [string, "null"] }
+        source: { type: string }
+        license: { $ref: "#/components/schemas/LicenseAcceptance" }
+        pinned: { type: boolean }
+        created_at: { type: string, format: date-time }
+        verified_at: { type: string, format: date-time }
+    ModelImportRequest:
+      type: object
+      required: [path, alias, license_id, license_accepted]
+      properties:
+        path: { type: string }
+        alias: { type: string, minLength: 1, maxLength: 200 }
+        format: { type: string, const: gguf, default: gguf }
+        quantization: { type: [string, "null"] }
+        source: { type: [string, "null"] }
+        license_id: { type: string, minLength: 1 }
+        license_accepted: { type: boolean }
+        pinned: { type: boolean, default: false }
+    ModelAliasRequest:
+      type: object
+      required: [alias]
+      properties:
+        alias: { type: string, minLength: 1, maxLength: 200 }
+    ModelPinRequest:
+      allOf:
+        - { $ref: "#/components/schemas/ModelAliasRequest" }
+        - type: object
+          required: [pinned]
+          properties:
+            pinned: { type: boolean }
+    PeerTransferTicket:
+      type: object
+      required:
+        - id
+        - source_node
+        - destination_node
+        - model_sha256
+        - chunk_sha256
+        - issued_at
+        - expires_at
+        - signature
+      properties:
+        id: { type: string, format: uuid }
+        source_node: { type: string, format: uuid }
+        destination_node: { type: string, format: uuid }
+        model_sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        chunk_sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        signature:
+          type: array
+          minItems: 64
+          maxItems: 64
+          items: { type: integer, minimum: 0, maximum: 255 }
+    NodeCapabilities:
+      type: object
+      required:
+        [
+          cpu_model,
+          logical_cores,
+          memory_total_bytes,
+          memory_available_bytes,
+          runtimes,
+        ]
+      properties:
+        cpu_model: { type: string }
+        logical_cores: { type: integer, minimum: 1 }
+        memory_total_bytes: { type: integer, minimum: 0 }
+        memory_available_bytes: { type: integer, minimum: 0 }
+        accelerator: { type: [object, "null"] }
+        runtimes: { type: array, items: { type: string } }
+        on_battery: { type: boolean, default: false }
+        user_active: { type: boolean, default: false }
+        temperature_celsius: { type: [number, "null"] }
+        thermal_throttling: { type: [boolean, "null"] }
+    Node:
+      type: object
+      required: [id, name, os, architecture, status, capabilities, last_seen_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        os: { enum: [windows, mac_os, linux, unknown] }
+        architecture: { type: string }
+        status: { enum: [joining, ready, suspect, offline, revoked, draining] }
+        capabilities: { $ref: "#/components/schemas/NodeCapabilities" }
+        last_seen_at: { type: string, format: date-time }
+    NodeResourcePolicy:
+      type: object
+      required:
+        - system_memory_reserve_percent
+        - system_memory_reserve_bytes
+        - accelerator_memory_reserve_percent
+        - accelerator_memory_reserve_bytes
+        - allow_on_battery
+        - allow_when_user_active
+      properties:
+        system_memory_reserve_percent:
+          { type: integer, minimum: 0, maximum: 100 }
+        system_memory_reserve_bytes: { type: integer, minimum: 0 }
+        accelerator_memory_reserve_percent:
+          { type: integer, minimum: 0, maximum: 100 }
+        accelerator_memory_reserve_bytes: { type: integer, minimum: 0 }
+        allow_on_battery: { type: boolean }
+        allow_when_user_active: { type: boolean }
+        max_temperature_celsius:
+          { type: [integer, "null"], minimum: 30, maximum: 120 }
+    NetworkPolicy:
+      type: object
+      required:
+        - remote_enabled
+        - managed_relay_enabled
+        - monthly_remote_byte_quota
+      properties:
+        remote_enabled: { type: boolean, default: false }
+        managed_relay_enabled: { type: boolean, default: false }
+        self_hosted_relay: { type: [string, "null"], format: uri }
+        monthly_remote_byte_quota: { type: integer, minimum: 0, default: 0 }
+    NetworkPolicyResponse:
+      type: object
+      required:
+        - policy
+        - remote_kill_switch_engaged
+        - remote_bytes_used_this_month
+      properties:
+        policy: { $ref: "#/components/schemas/NetworkPolicy" }
+        remote_kill_switch_engaged: { type: boolean }
+        remote_bytes_used_this_month: { type: integer, minimum: 0 }
+    TransportCandidate:
+      type: object
+      required:
+        - kind
+        - authenticated
+        - encrypted
+        - remote
+        - estimated_bytes
+      properties:
+        kind:
+          enum:
+            [loopback, lan_quic, direct_quic, self_hosted_relay, managed_relay]
+        authenticated: { type: boolean }
+        encrypted: { type: boolean }
+        remote: { type: boolean }
+        relay: { type: [string, "null"], format: uri }
+        estimated_bytes: { type: integer, minimum: 0 }
+    TransportDecision:
+      type: object
+      required: [candidate, privacy]
+      properties:
+        candidate: { $ref: "#/components/schemas/TransportCandidate" }
+        privacy:
+          type: object
+          required:
+            - transport
+            - leaves_local_network
+            - uses_relay
+            - relay_sees_plaintext
+            - estimated_bytes
+          properties:
+            transport:
+              enum:
+                [
+                  loopback,
+                  lan_quic,
+                  direct_quic,
+                  self_hosted_relay,
+                  managed_relay,
+                ]
+            leaves_local_network: { type: boolean }
+            uses_relay: { type: boolean }
+            relay: { type: [string, "null"], format: uri }
+            relay_sees_plaintext: { type: boolean, const: false }
+            estimated_bytes: { type: integer, minimum: 0 }
+    DeviceRegistration:
+      type: object
+      required: [name, os, architecture, capabilities]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 128 }
+        os: { enum: [windows, mac_os, linux, unknown] }
+        architecture: { type: string }
+        capabilities: { $ref: "#/components/schemas/NodeCapabilities" }
+    Conversation:
+      type: object
+      required: [id, temporary, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        temporary: { type: boolean, const: false }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ConversationMessage:
+      type: object
+      required: [id, conversation_id, role, content, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        conversation_id: { type: string, format: uuid }
+        role: { enum: [system, user, assistant, tool] }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+    InvitationStatus:
+      type: object
+      required: [id, expires_at, failed_attempts, consumed, approved]
+      properties:
+        id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
+        failed_attempts: { type: integer, minimum: 0, maximum: 5 }
+        consumed: { type: boolean }
+        approved: { type: boolean }
+        approved_at: { type: [string, "null"], format: date-time }
+    InvitationPresentation:
+      type: object
+      required: [id, cluster_id, short_code, link_secret, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        cluster_id: { type: string }
+        short_code: { type: string, pattern: "^[A-Z2-7]{8}$" }
+        link_secret: { type: string, minLength: 22, maxLength: 22 }
+        certificate_authority_pem: { type: string }
+        expires_at: { type: string, format: date-time }
+    DeviceCertificate:
+      type: object
+      required:
+        - certificate_pem
+        - certificate_authority_pem
+        - issued_at
+        - expires_at
+      properties:
+        certificate_pem: { type: string }
+        certificate_authority_pem: { type: string }
+        issued_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+    EnrollmentCredentialResponse:
+      type: object
+      required: [status, authority_public_key]
+      properties:
+        status: { enum: [pending_approval, approved] }
+        credential: { type: [object, "null"] }
+        device_certificate:
+          oneOf:
+            - { $ref: "#/components/schemas/DeviceCertificate" }
+            - { type: "null" }
+        authority_public_key: { type: string }
+    EnrollmentBeginRequest:
+      type: object
+      required: [invitation_id, method, client_message]
+      properties:
+        invitation_id: { type: string, format: uuid }
+        method: { enum: [short_code, link_secret] }
+        client_message: { type: string, minLength: 1, maxLength: 342 }
+    EnrollmentConfirmRequest:
+      allOf:
+        - type: object
+          required:
+            [invitation_id, client_proof, device_id, device_public_key, device]
+          properties:
+            invitation_id: { type: string, format: uuid }
+            client_proof: { type: string, minLength: 43, maxLength: 43 }
+            device_id: { type: string, format: uuid }
+            device_public_key: { type: string, minLength: 43, maxLength: 43 }
+            device: { $ref: "#/components/schemas/DeviceRegistration" }
+    Benchmark:
+      type: object
+      required:
+        [
+          node_id,
+          runtime,
+          model,
+          tokens_per_second,
+          time_to_first_token_ms,
+          network_latency_ms,
+          network_bandwidth_mbps,
+          jitter_ms,
+          packet_loss,
+          sample_count,
+          kind,
+          measured_at,
+        ]
+      properties:
+        node_id: { type: string, format: uuid }
+        runtime: { type: string }
+        model: { type: string }
+        tokens_per_second: { type: number, minimum: 0 }
+        time_to_first_token_ms: { type: number, minimum: 0 }
+        network_latency_ms: { type: number, minimum: 0 }
+        network_bandwidth_mbps: { type: number, minimum: 0 }
+        jitter_ms: { type: number, minimum: 0 }
+        packet_loss: { type: number, minimum: 0, maximum: 1 }
+        sample_count: { type: integer, minimum: 1 }
+        kind: { enum: [measured, estimated, unavailable] }
+        measured_at: { type: string, format: date-time }
+    BenchmarkReportExport:
+      type: object
+      required:
+        - schema_version
+        - product_version
+        - generated_at
+        - content_included
+        - nodes
+        - policies
+        - benchmarks
+      properties:
+        schema_version: { type: integer, const: 1 }
+        product_version: { type: string }
+        generated_at: { type: string, format: date-time }
+        content_included: { type: boolean, const: false }
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/Node" }
+        policies:
+          type: array
+          items:
+            type: object
+            required: [node_id, policy]
+            properties:
+              node_id: { type: string, format: uuid }
+              policy: { $ref: "#/components/schemas/NodeResourcePolicy" }
+        benchmarks:
+          type: array
+          items: { $ref: "#/components/schemas/Benchmark" }
+    PlanSimulation:
+      type: object
+      properties:
+        model: { type: string, default: constellation/mock }
+        required_runtime: { type: string, default: mock }
+        estimated_memory_bytes:
+          { type: integer, minimum: 0, default: 1073741824 }
+        class: { enum: [interactive, batch, background], default: interactive }
+        policy:
+          {
+            enum:
+              [
+                fastest,
+                most_private,
+                lowest_power,
+                balanced,
+                keep_this_computer_responsive,
+              ],
+            default: balanced,
+          }
+        allowed_nodes: { type: array, items: { type: string, format: uuid } }
+    NodeStrategyCapabilities:
+      type: object
+      required:
+        [node_id, runtime_id, strategies, maximum_nodes, checkpoint_recovery]
+      properties:
+        node_id: { type: string, format: uuid }
+        runtime_id: { type: string }
+        strategies:
+          type: array
+          items:
+            enum: [pipeline, tensor, prefill_decode, speculative, hybrid]
+        maximum_nodes: { type: integer, minimum: 2, maximum: 8 }
+        checkpoint_recovery: { type: boolean }
+    DistributedPlanSimulation:
+      allOf:
+        - { $ref: "#/components/schemas/PlanSimulation" }
+        - type: object
+          required:
+            [
+              strategy,
+              node_count,
+              bytes_per_token,
+              maximum_network_bytes,
+              capabilities,
+            ]
+          properties:
+            strategy:
+              enum: [pipeline, tensor, prefill_decode, speculative, hybrid]
+            node_count: { type: integer, minimum: 2, maximum: 8 }
+            bytes_per_token: { type: integer, minimum: 1 }
+            maximum_network_bytes: { type: integer, minimum: 1 }
+            capabilities:
+              type: array
+              items: { $ref: "#/components/schemas/NodeStrategyCapabilities" }
+    DigitalTwinRequest:
+      type: object
+      required: [scenarios]
+      properties:
+        scenarios:
+          type: array
+          minItems: 1
+          maxItems: 64
+          items:
+            type: object
+            required: [name, latency_multiplier, throughput_multiplier]
+            properties:
+              name: { type: string }
+              latency_multiplier: { type: number, minimum: 1 }
+              throughput_multiplier:
+                { type: number, exclusiveMinimum: 0, maximum: 1 }
+              unavailable_node: { type: [string, "null"], format: uuid }
+    PlanObservationRequest:
+      type: object
+      required: [ttft_ms, tokens_per_second, network_bytes]
+      properties:
+        ttft_ms: { type: number, exclusiveMinimum: 0 }
+        tokens_per_second: { type: number, exclusiveMinimum: 0 }
+        network_bytes: { type: integer, minimum: 0 }
+    TraceSpan:
+      type: object
+      required: [node_id, operation, started_at, duration_us, status]
+      properties:
+        id: { type: string, format: uuid }
+        node_id: { type: string, format: uuid }
+        parent_span_id: { type: [string, "null"], format: uuid }
+        operation: { type: string, minLength: 1, maxLength: 64 }
+        started_at: { type: string, format: date-time }
+        duration_us: { type: integer, minimum: 0 }
+        status: { enum: [ok, error, cancelled] }
+        attributes: { type: object, maxProperties: 16 }
+    WorkerEventSubmission:
+      type: object
+      required: [sequence, event]
+      properties:
+        sequence: { type: integer, minimum: 1 }
+        event:
+          type: object
+          required: [type]
+          properties:
+            type:
+              enum: [loading, prefill, text_delta, finished, failure, cancelled]
+    WorkflowDefinition:
+      type: object
+      additionalProperties: false
+      required: [version, name, steps]
+      properties:
+        version: { type: integer, const: 1 }
+        name: { type: string, minLength: 1, maxLength: 128 }
+        description: { type: string }
+        steps:
+          type: array
+          minItems: 1
+          maxItems: 256
+          items:
+            type: object
+            required: [id, type]
+            properties:
+              id: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" }
+              type: { enum: [inference, tool, approval, artifact] }
+              depends_on: { type: array, items: { type: string } }
+              timeout_seconds: { type: integer, minimum: 1, maximum: 86400 }
+              retry_limit: { type: integer, minimum: 0, maximum: 3 }
+    ExecutionPlan:
+      type: object
+      additionalProperties: true
+      required:
+        [
+          id,
+          workload_id,
+          strategy,
+          selected_nodes,
+          confidence,
+          reasons,
+          privacy,
+          created_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        workload_id: { type: string, format: uuid }
+        strategy:
+          enum:
+            [
+              single_node,
+              independent_routing,
+              replicated,
+              pipeline,
+              tensor,
+              prefill_decode,
+              speculative,
+              hybrid,
+            ]
+        selected_nodes: { type: array, items: { type: string, format: uuid } }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        reasons: { type: array, items: { type: string } }
+        privacy: { type: object }
+        created_at: { type: string, format: date-time }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type, code, trace_id]
+          properties:
+            message: { type: string }
+            type: { type: string }
+            code: { type: string }
+            param: { type: [string, "null"] }
+            trace_id: { type: string, format: uuid }

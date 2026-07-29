@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Read-only core metadata for the bundled Constellation UI.",
+  "windows": ["main"],
+  "local": true,
+  "permissions": ["core:app:default"]
+}

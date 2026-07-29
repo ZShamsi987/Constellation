@@ -1,0 +1,111 @@
+name: Release Candidate Provenance
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  binaries:
+    name: ${{ matrix.name }} binaries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            name: linux-x64
+            pattern: target/release/constellation*
+          - os: macos-14
+            name: macos-arm64
+            pattern: target/release/constellation*
+          - os: windows-2022
+            name: windows-x64
+            pattern: target/release/constellation*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux credential dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - run: cargo build --locked --release -p constellationd -p constellation-cli -p constellation-service
+      - name: Generate binary SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: target/release
+          format: spdx-json
+          output-file: target/release/constellation.spdx.json
+          upload-artifact: false
+      - name: Sign build provenance and SBOM attestation
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-path: ${{ matrix.pattern }}
+          sbom-path: target/release/constellation.spdx.json
+      - name: Upload attested candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constellation-${{ matrix.name }}
+          path: |
+            ${{ matrix.pattern }}
+            target/release/constellation.spdx.json
+          if-no-files-found: error
+
+  desktop:
+    name: ${{ matrix.name }} desktop candidate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            name: linux-x64
+          - os: macos-14
+            name: macos-arm64
+          - os: windows-2022
+            name: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @constellation/desktop bundle
+      - name: Generate desktop SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: apps/desktop/src-tauri/target/release/bundle
+          format: spdx-json
+          output-file: apps/desktop/src-tauri/target/release/constellation-desktop.spdx.json
+          upload-artifact: false
+      - name: Attest desktop bundles and SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
+        with:
+          subject-path: apps/desktop/src-tauri/target/release/bundle/**/*
+          sbom-path: apps/desktop/src-tauri/target/release/constellation-desktop.spdx.json
+      - name: Upload attested desktop candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: constellation-desktop-${{ matrix.name }}
+          path: |
+            apps/desktop/src-tauri/target/release/bundle
+            apps/desktop/src-tauri/target/release/constellation-desktop.spdx.json
+          if-no-files-found: error

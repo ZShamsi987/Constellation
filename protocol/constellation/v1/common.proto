@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Explicit protocol compatibility window exchanged before authenticated control traffic.
+message ProtocolVersion {
+  uint32 current = 1;
+  uint32 minimum_supported = 2;
+  uint32 maximum_supported = 3;
+}
+
+// Normalized content-free protocol failure.
+message ProtocolError {
+  string code = 1;
+  string message = 2;
+  string trace_id = 3;
+}
+
+// Supported process roles.
+enum NodeRole {
+  NODE_ROLE_UNSPECIFIED = 0;
+  NODE_ROLE_CONTROLLER = 1;
+  NODE_ROLE_WORKER = 2;
+  NODE_ROLE_ALL = 3;
+}
+
+// Controller assessment of node liveness and eligibility.
+enum NodeStatus {
+  NODE_STATUS_UNSPECIFIED = 0;
+  NODE_STATUS_JOINING = 1;
+  NODE_STATUS_READY = 2;
+  NODE_STATUS_SUSPECT = 3;
+  NODE_STATUS_OFFLINE = 4;
+  NODE_STATUS_REVOKED = 5;
+  NODE_STATUS_DRAINING = 6;
+}
+
+// Version range offered during session negotiation.
+message ProtocolRange {
+  uint32 minimum_major = 1;
+  uint32 maximum_major = 2;
+  uint32 maximum_minor = 3;
+}
+
+// Session hello sent before privileged protocol messages.
+message SessionHello {
+  string product_version = 1;
+  ProtocolRange protocol = 2;
+  NodeRole role = 3;
+  string node_id = 4;
+  string cluster_id = 5;
+  bytes identity_public_key = 6;
+  google.protobuf.Timestamp sent_at = 7;
+}

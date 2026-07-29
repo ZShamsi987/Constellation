@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Ordered redacted cluster event. Payload schemas are versioned by event_type.
+message ClusterEvent {
+  uint64 sequence = 1;
+  string event_type = 2;
+  bytes canonical_payload_json = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// Replays events strictly after the supplied sequence.
+message EventServiceReplayRequest {
+  uint64 after_sequence = 1;
+  uint32 limit = 2;
+  bool follow = 3;
+}
+
+// One replayed event; the wrapper keeps RPC evolution independent from the event record.
+message EventServiceReplayResponse {
+  ClusterEvent event = 1;
+}
+
+// Durable event replay and live-follow service.
+service EventService {
+  rpc Replay(EventServiceReplayRequest) returns (stream EventServiceReplayResponse);
+}

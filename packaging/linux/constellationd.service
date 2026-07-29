@@ -1,0 +1,19 @@
+[Unit]
+Description=Constellation private AI compute daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/constellationd --role all --database-url sqlite://%h/.local/share/constellation/constellation.db?mode=rwc --data-dir %h/.local/share/constellation
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/share/constellation
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LockPersonality=true
+
+[Install]
+WantedBy=default.target

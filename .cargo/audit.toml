@@ -1,0 +1,6 @@
+[advisories]
+# RUSTSEC-2023-0071 concerns timing leakage from RSA private-key operations.
+# Constellation's transitive rsa usage is limited to public-key OIDC signature
+# verification; device and cluster private keys are Ed25519 and handled elsewhere.
+# Re-evaluate when openidconnect removes rsa or a patched rsa release exists.
+ignore = ["RUSTSEC-2023-0071"]

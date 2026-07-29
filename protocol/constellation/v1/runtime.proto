@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+// Adapter capability declaration. Unsupported fields remain false/empty.
+message RuntimeCapabilities {
+  string runtime_id = 1;
+  string adapter_version = 2;
+  string runtime_version = 3;
+  repeated string operating_systems = 4;
+  repeated string architectures = 5;
+  repeated string accelerators = 6;
+  repeated string model_formats = 7;
+  repeated string quantizations = 8;
+  uint64 maximum_context_tokens = 9;
+  bool streaming = 10;
+  bool embeddings = 11;
+  bool tool_calling = 12;
+  bool structured_output = 13;
+  bool multimodal = 14;
+  repeated string parallelism = 15;
+  bool cancellation = 16;
+  bool recovery = 17;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status = 1;
+  RuntimeCapabilities capabilities = 2;
+  string error_code = 3;
+}
+
+message ExecuteRequest {
+  string workload_id = 1;
+  string attempt_id = 2;
+  string model = 3;
+  bytes canonical_request_json = 4;
+  bytes plan_fragment = 5;
+  uint32 maximum_output_tokens = 6;
+}
+
+message ExecuteResponse {
+  string workload_id = 1;
+  string attempt_id = 2;
+  uint64 sequence = 3;
+  oneof event {
+    LoadingEvent loading = 4;
+    PrefillEvent prefill = 5;
+    TextDelta text_delta = 6;
+    FinishEvent finished = 7;
+    RuntimeFailure failure = 8;
+  }
+}
+
+message LoadingEvent { float progress = 1; }
+message PrefillEvent { uint64 elapsed_ms = 1; }
+message TextDelta { string text = 1; }
+message FinishEvent {
+  uint32 input_tokens = 1;
+  uint32 output_tokens = 2;
+  string finish_reason = 3;
+}
+message RuntimeFailure {
+  string code = 1;
+  string redacted_message = 2;
+  bool retryable = 3;
+}
+
+service RuntimeAdapterService {
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc Execute(ExecuteRequest) returns (stream ExecuteResponse);
+  rpc Cancel(CancelRequest) returns (CancelResponse);
+}
+
+message CancelRequest { string workload_id = 1; }
+message CancelResponse { bool acknowledged = 1; }

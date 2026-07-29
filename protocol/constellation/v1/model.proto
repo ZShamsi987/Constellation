@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package constellation.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// SHA-256 addressed model chunk.
+message ModelChunk {
+  uint32 index = 1;
+  string sha256 = 2;
+  uint64 size_bytes = 3;
+}
+
+// Verified model manifest shared without repository credentials.
+message ModelManifest {
+  string alias = 1;
+  string sha256 = 2;
+  uint64 size_bytes = 3;
+  uint64 chunk_size_bytes = 4;
+  repeated ModelChunk chunks = 5;
+  string format = 6;
+  string quantization = 7;
+  string license_id = 8;
+  bool pinned = 9;
+  google.protobuf.Timestamp verified_at = 10;
+}
+
+// Narrow request for one controller-authorized peer chunk.
+message ModelTransferServiceDownloadChunkRequest {
+  string ticket_id = 1;
+  string chunk_sha256 = 2;
+  uint64 offset = 3;
+}
+
+// Bounded resumable chunk frame.
+message ModelTransferServiceDownloadChunkResponse {
+  string chunk_sha256 = 1;
+  uint64 offset = 2;
+  bytes data = 3;
+  bool complete = 4;
+}
+
+// Authenticated peer model-transfer data plane.
+service ModelTransferService {
+  rpc DownloadChunk(ModelTransferServiceDownloadChunkRequest) returns (stream ModelTransferServiceDownloadChunkResponse);
+}

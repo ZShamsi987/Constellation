@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Constellation">
+  <defs>
+    <radialGradient id="space" cx="34%" cy="26%" r="92%">
+      <stop offset="0" stop-color="#173453"/>
+      <stop offset="1" stop-color="#07111f"/>
+    </radialGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff0bd"/>
+      <stop offset="1" stop-color="#e9a94b"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#space)"/>
+  <g fill="none" stroke="#63c7c3" stroke-width="24" stroke-linecap="round" opacity=".72">
+    <path d="M246 694 416 474 690 308 786 644 512 764Z"/>
+    <path d="m246 694 540-50M416 474l96 290M690 308 512 764" opacity=".42"/>
+  </g>
+  <g fill="#a8f0e8" stroke="#07111f" stroke-width="18">
+    <circle cx="246" cy="694" r="48"/>
+    <circle cx="416" cy="474" r="42"/>
+    <circle cx="690" cy="308" r="46"/>
+    <circle cx="786" cy="644" r="52"/>
+    <circle cx="512" cy="764" r="40"/>
+  </g>
+  <path d="m512 286 48 142 150 2-120 90 44 144-122-86-122 86 44-144-120-90 150-2Z" fill="url(#star)" stroke="#07111f" stroke-width="20" stroke-linejoin="round"/>
+</svg>
